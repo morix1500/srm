@@ -111,6 +111,7 @@ func createBackupDir() (string, error) {
 func (c *CLI) run(args []string) int {
 	var isRestore bool
 	var isList bool
+	var isVersion bool
 
 	flags := flag.NewFlagSet("srm", flag.ContinueOnError)
 	flags.SetOutput(c.errStream)
@@ -118,11 +119,18 @@ func (c *CLI) run(args []string) int {
 	flags.BoolVar(&isRestore, "r", false, "Restore deleted files(directory).")
 	flags.BoolVar(&isList, "list", false, "Display a list of deleted files(directory) in the past.")
 	flags.BoolVar(&isList, "l", false, "Display a list of deleted files(directory) in the past.")
+	flags.BoolVar(&isVersion, "v", false, "Display version.")
+	flags.BoolVar(&isVersion, "version", false, "Display version.")
 
 	if err := flags.Parse(args[1:]); err != nil {
 		fmt.Fprintln(c.errStream, err)
 		return ExitCodeErr
 	}
+	if isVersion {
+		fmt.Fprintln(c.outStream, Version)
+		return ExitCodeOK
+	}
+
 	backupDir, err := createBackupDir()
 	if err != nil {
 		fmt.Fprintln(c.errStream, err)
