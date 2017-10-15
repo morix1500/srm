@@ -59,7 +59,7 @@ func genGzip(tarPath string) error {
 	return os.Remove(tarPath)
 }
 
-func unTar(source, target string) error {
+func unTar(source, outputDir string) error {
 	defer func() {
 		os.Remove(source)
 	}()
@@ -78,7 +78,7 @@ func unTar(source, target string) error {
 			return err
 		}
 
-		path := filepath.Join(target, header.Name)
+		path := filepath.Join(outputDir, header.Name)
 		info := header.FileInfo()
 
 		if info.IsDir() {
@@ -102,8 +102,8 @@ func unTar(source, target string) error {
 	return nil
 }
 
-func genTar(source, outputDir, target string) (string, error) {
-	filename := target + ".tar"
+func genTar(source, outputDir, outputFilename string) (string, error) {
+	filename := outputFilename + ".tar"
 	output := filepath.Join(outputDir, filename)
 	tarfile, err := os.Create(output)
 	if err != nil {
@@ -158,8 +158,13 @@ func genTar(source, outputDir, target string) (string, error) {
 	return output, nil
 }
 
-func Compress(source, backupDir, target string) error {
-	tarPath, err := genTar(source, backupDir, target)
+// Compress -- Compress file or directory
+// Args:
+//   source: source file
+//   outputDir: save directory for gzip file
+//   outputFilename: file name of gzip file
+func Compress(source, outputDir, outputFilename string) error {
+	tarPath, err := genTar(source, outputDir, outputFilename)
 	if err != nil {
 		return err
 	}
@@ -172,12 +177,16 @@ func Compress(source, backupDir, target string) error {
 	return nil
 }
 
-func UnCompress(source, target string) error {
+// UnCompress -- UnCompress gzip file
+// Args:
+//   source: sourse gzip file
+//   outputDir: output directory path
+func UnCompress(source, outputDir string) error {
 	tarPath, err := unGzip(source)
 	if err != nil {
 		return err
 	}
-	err = unTar(tarPath, target)
+	err = unTar(tarPath, outputDir)
 	if err != nil {
 		return err
 	}

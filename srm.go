@@ -13,15 +13,19 @@ import (
 	"strings"
 )
 
+// CLI -- command line interface
 type CLI struct {
 	outStream, errStream io.Writer
 }
 
 const (
+	// BackupDirName -- backup directory name
 	BackupDirName = ".srm"
 )
 const (
+	// ExitCodeOK -- success code
 	ExitCodeOK = iota
+	// ExitCodeErr -- error code
 	ExitCodeErr
 )
 
@@ -102,19 +106,18 @@ func createBackupDir() (string, error) {
 	}
 
 	return backupDir, nil
-
 }
 
-func (c *CLI) Run(args []string) int {
+func (c *CLI) run(args []string) int {
 	var isRestore bool
 	var isList bool
 
 	flags := flag.NewFlagSet("srm", flag.ContinueOnError)
 	flags.SetOutput(c.errStream)
-	flags.BoolVar(&isRestore, "restore", false, "restore")
-	flags.BoolVar(&isRestore, "r", false, "restore")
-	flags.BoolVar(&isList, "list", false, "List")
-	flags.BoolVar(&isList, "l", false, "List")
+	flags.BoolVar(&isRestore, "restore", false, "Restore deleted files(directory).")
+	flags.BoolVar(&isRestore, "r", false, "Restore deleted files(directory).")
+	flags.BoolVar(&isList, "list", false, "Display a list of deleted files(directory) in the past.")
+	flags.BoolVar(&isList, "l", false, "Display a list of deleted files(directory) in the past.")
 
 	if err := flags.Parse(args[1:]); err != nil {
 		fmt.Fprintln(c.errStream, err)
@@ -162,5 +165,5 @@ func (c *CLI) Run(args []string) int {
 
 func main() {
 	cli := &CLI{outStream: os.Stdout, errStream: os.Stderr}
-	os.Exit(cli.Run(os.Args))
+	os.Exit(cli.run(os.Args))
 }
