@@ -1,13 +1,16 @@
 package main
 
 import (
-	"crypto/sha256"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"github.com/pkg/errors"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 )
 
 type CLI struct {
@@ -22,8 +25,16 @@ const (
 	ExitCodeErr
 )
 
-func getHash(str string) string {
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(str)))
+func encodeBase64(str string) string {
+	return base64.StdEncoding.EncodeToString([]byte(str))
+}
+
+func decodeBase64(str string) (string, error) {
+	data, err := base64.StdEncoding.DecodeString(str)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func remove(source, backupDir string) error {
@@ -31,7 +42,7 @@ func remove(source, backupDir string) error {
 	if err != nil {
 		return err
 	}
-	filename := getHash(source)
+	filename := encodeBase64(source)
 
 	// Create backup
 	err = Compress(source, backupDir, filename)
@@ -43,7 +54,7 @@ func remove(source, backupDir string) error {
 }
 
 func restore(source, backupDir string) error {
-	filename := getHash(source) + ".tar.gz"
+	filename := encodeBase64(source) + ".tar.gz"
 	backupFile := filepath.Join(backupDir, filename)
 
 	_, err := os.Stat(backupFile)
@@ -57,6 +68,24 @@ func restore(source, backupDir string) error {
 	}
 
 	return nil
+}
+
+func list(backupDir string) ([]string, error) {
+	files, err := ioutil.ReadDir(backupDir)
+	if err != nil {
+		return []string{}, err
+	}
+	arr := make([]string, len(files))
+	for i := 0; i < len(files); i++ {
+		name := strings.Split(files[i].Name(), ".")[0]
+		name, err := decodeBase64(name)
+		if err != nil {
+			return []string{}, err
+		}
+		arr[i] = name
+	}
+	sort.Strings(arr)
+	return arr, nil
 }
 
 func createBackupDir() (string, error) {
@@ -78,10 +107,14 @@ func createBackupDir() (string, error) {
 
 func (c *CLI) Run(args []string) int {
 	var isRestore bool
+	var isList bool
+
 	flags := flag.NewFlagSet("srm", flag.ContinueOnError)
 	flags.SetOutput(c.errStream)
 	flags.BoolVar(&isRestore, "restore", false, "restore")
 	flags.BoolVar(&isRestore, "r", false, "restore")
+	flags.BoolVar(&isList, "list", false, "List")
+	flags.BoolVar(&isList, "l", false, "List")
 
 	if err := flags.Parse(args[1:]); err != nil {
 		fmt.Fprintln(c.errStream, err)
@@ -91,6 +124,17 @@ func (c *CLI) Run(args []string) int {
 	if err != nil {
 		fmt.Fprintln(c.errStream, err)
 		return ExitCodeErr
+	}
+	if isList {
+		files, err := list(backupDir)
+		if err != nil {
+			fmt.Fprintln(c.errStream, err)
+			return ExitCodeErr
+		}
+		for i := 0; i < len(files); i++ {
+			fmt.Fprintln(c.outStream, files[i])
+		}
+		return ExitCodeOK
 	}
 
 	targetFiles := flags.Args()
